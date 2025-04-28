@@ -1,0 +1,6 @@
+set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) lt4.v ]
+set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) fds16bit.v ]
+set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) fds.v ]
+set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) fdm.v ]
+set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) C43.v ]
+set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) bd3.v ]

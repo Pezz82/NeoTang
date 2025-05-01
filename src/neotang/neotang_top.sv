@@ -221,7 +221,7 @@ module neotang_top (
         .in_b(osd_out_b),
         .in_hs(osd_out_hs),
         .in_vs(osd_out_vs),
-        .in_de(osd_out_de),
+        .in_de(hdmi_de),
         
         .out_r(hdmi_r),
         .out_g(hdmi_g),
@@ -234,7 +234,7 @@ module neotang_top (
     // HDMI output module
     hdmi_output hdmi_out (
         .clk_pixel(clk_74m25),
-        .clk_pixel_x5(clk_371m25), // 5x pixel clock for HDMI serializer
+        .clk_pixel_x5(clk_371m25),
         .clk_audio(clk_24m576),
         .reset(core_reset),
         

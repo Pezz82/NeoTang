@@ -365,8 +365,8 @@ module rom_loader (
                         uart_ready <= 1;
                     end
 
-                    // BL616 sends ACK (0x11) after file load — release BUSY
-                    if(current_cmd == CMD_ACK) begin
+                    // BL616 issues ACK (0x11) at end of each file — release BUSY
+                    if (current_cmd == CMD_ACK) begin
                         rom_busy <= 1'b0;
                         rom_done <= 1'b1;
                         state    <= STATE_END;

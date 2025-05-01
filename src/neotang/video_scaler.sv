@@ -236,7 +236,7 @@ module video_scaler (
                 out_b <= 8'h00;
                 
                 // Reset line read at start of horizontal blanking
-                if (h_count == H_ACTIVE) begin
+                if (h_count == H_TOTAL) begin
                     line_complete <= 0;
                     if (v_count == 0) begin
                         // Reset at start of frame

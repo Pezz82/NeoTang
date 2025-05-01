@@ -364,7 +364,7 @@ module neotang_top (
         .VSYNC(core_vs),
         .HBLANK(core_hblank),
         .VBLANK(core_vblank),
-        .HDMI_DE(core_de),
+        .HDMI_DE(hdmi_de),
         
         // Audio output
         .AUDIO_L(core_audio_l),

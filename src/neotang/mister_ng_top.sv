@@ -301,7 +301,6 @@ module mister_ng_top (
     assign VBLANK = vblank_reg;
     assign VIDEO_DE = ~(hblank_reg | vblank_reg);  // DE is active when not in blanking
 
-    // Assign HDMI_DE to VIDEO_DE
     assign HDMI_DE = VIDEO_DE;
 
 endmodule

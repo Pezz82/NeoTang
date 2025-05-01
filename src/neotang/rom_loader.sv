@@ -44,6 +44,7 @@ module rom_loader (
     localparam CMD_LOAD_DATA = 8'h02;    // ROM data follows
     localparam CMD_LOAD_END = 8'h03;     // End of ROM data
     localparam CMD_LOAD_ABORT = 8'h04;   // Abort loading
+    localparam CMD_ACK = 8'h11;          // ACK signal
     
     // State machine states
     localparam STATE_IDLE = 0;
@@ -268,7 +269,7 @@ module rom_loader (
                         end else begin
                             // For other formats, add the ROM address to the base address
                             current_addr <= base_addr + current_rom_addr;
-                        }
+                        end
                         
                         // Set bytes remaining
                         bytes_remaining <= current_rom_size;
@@ -346,26 +347,29 @@ module rom_loader (
                 
                 STATE_WRITE: begin
                     if (uart_valid) begin
-                        // Data received, write to SDRAM
+                        // Write data to SDRAM
                         sdram_addr <= current_addr;
                         sdram_data <= uart_data;
                         sdram_wr <= 1;
+                        
+                        // Increment address and decrement counter
                         current_addr <= current_addr + 1;
                         bytes_remaining <= bytes_remaining - 1;
-                        uart_ready <= 0;
                         
+                        // Check if we're done
                         if (bytes_remaining == 1) begin
-                            // Last byte, check for ACK
-                            if (current_cmd == CMD_ACK) begin
-                                rom_busy <= 1'b0;
-                                rom_done <= 1'b1;
-                                state <= STATE_END;
-                            end else begin
-                                state <= STATE_END;
-                            end
-                        end else begin
-                            uart_ready <= 1;
+                            state <= STATE_END;
+                            sdram_wr <= 0;
                         end
+                        
+                        uart_ready <= 1;
+                    end
+
+                    // BL616 sends ACK (0x11) after file load — release BUSY
+                    if(current_cmd == CMD_ACK) begin
+                        rom_busy <= 1'b0;
+                        rom_done <= 1'b1;
+                        state    <= STATE_END;
                     end
                 end
                 

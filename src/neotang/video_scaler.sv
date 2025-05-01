@@ -66,7 +66,7 @@ module video_scaler (
             h_count <= 0;
             v_count <= 0;
         end else begin
-            if (h_count == H_TOTAL - 1) begin
+            if (h_count == H_TOTAL-1) begin
                 h_count <= 0;
                 if (v_count == V_TOTAL - 1)
                     v_count <= 0;

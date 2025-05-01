@@ -1,8 +1,31 @@
 #!/bin/bash
-# Build script for NeoGeo core on Tang 138K
-# Enhanced with better error handling and reporting
+# Build script for NeoGeo core on Tang 138K with enhanced error handling
+# Usage: BOARD=60k ./build.sh or BOARD=138k ./build.sh
 
-set -e  # Exit on any error
+# Error handling
+set -e
+trap 'echo "Error on line $LINENO"' ERR
+
+# Check if BOARD is set
+if [ -z "$BOARD" ]; then
+    echo "Error: BOARD environment variable not set"
+    echo "Usage: BOARD=60k ./build.sh or BOARD=138k ./build.sh"
+    exit 1
+fi
+
+# Map board to device
+case "$BOARD" in
+    "60k")
+        DEVICE="GW5AST-60C"
+        ;;
+    "138k")
+        DEVICE="GW5AST-138C"
+        ;;
+    *)
+        echo "Error: Invalid BOARD value. Must be '60k' or '138k'"
+        exit 1
+        ;;
+esac
 
 # Color codes for output formatting
 RED='\033[0;31m'
@@ -50,20 +73,19 @@ check_dir_exists() {
 }
 
 # Function to check if a command exists
-check_command_exists() {
-    local cmd=$1
-    local message=$2
-    
-    if ! command -v $cmd &> /dev/null; then
-        handle_error 1 "$message" ""
+check_command() {
+    if ! command -v $1 &> /dev/null; then
+        echo "Error: $1 is required but not installed"
+        exit 1
     fi
 }
 
 # Check for required tools
 echo -e "${BLUE}Checking for required tools...${NC}"
-check_command_exists "yosys" "Yosys not found. Please install Yosys."
-check_command_exists "nextpnr-gowin" "nextpnr-gowin not found. Please install nextpnr with Gowin support."
-check_command_exists "gowin_pack" "gowin_pack not found. Please install Project Apicula."
+check_command yosys
+check_command nextpnr-gowin
+check_command gowin_pack
+check_command gzip
 
 # Create build directory
 echo -e "${BLUE}Creating build directory...${NC}"
@@ -155,7 +177,7 @@ echo -e "${GREEN}Synthesis completed successfully${NC}"
 
 # Run nextpnr-gowin for place and route
 echo -e "${BLUE}Running nextpnr-gowin for place and route...${NC}"
-if ! nextpnr-gowin --device GW5AST-138 --json neotang.json --pcf $CONSTRAINTS_DIR/neotang_138k.pcf --write neotang_pnr.json --freq 74.25 > nextpnr.log 2>&1; then
+if ! nextpnr-gowin --device $DEVICE --json neotang.json --pcf $CONSTRAINTS_DIR/neotang_138k.pcf --write neotang_pnr.json --freq 74.25 > nextpnr.log 2>&1; then
     echo -e "${YELLOW}nextpnr-gowin failed, falling back to Gowin IDE flow${NC}"
     gowin_sh -f neotang.tcl
 else
@@ -164,7 +186,7 @@ fi
 
 # Run Gowin pack to generate bitstream
 echo -e "${BLUE}Running Gowin pack to generate bitstream...${NC}"
-gowin_pack -d GW5AST-138 -o neotang.bin neotang_pnr.json > gowin_pack.log 2>&1
+gowin_pack -d $DEVICE -o neotang.bin neotang_pnr.json > gowin_pack.log 2>&1
 if [ $? -ne 0 ]; then
     handle_error $? "gowin_pack bitstream generation failed" "gowin_pack.log"
 fi
@@ -178,3 +200,23 @@ echo -e "${BLUE}Build statistics:${NC}"
 echo -e "  - Source files: ${#SOURCE_FILES[@]}"
 echo -e "  - Bitstream size: $(du -h neotang.bin | cut -f1)"
 echo -e "  - Build time: $SECONDS seconds"
+
+# Create release structure
+echo -e "${BLUE}Creating release structure...${NC}"
+mkdir -p sd/cores/console${BOARD}
+cp neotang.bin sd/cores/console${BOARD}/neogeotang.bin
+
+# Copy default BIOS
+echo -e "${BLUE}Copying default BIOS...${NC}"
+mkdir -p sd/games/neogeo
+if [ -f firmware/neo_geo_bios/uni-bios_4_0.rom ]; then
+    cp firmware/neo_geo_bios/uni-bios_4_0.rom sd/games/neogeo/ng_bios.rom
+else
+    echo -e "${YELLOW}Warning: Default BIOS not found at firmware/neo_geo_bios/uni-bios_4_0.rom${NC}"
+    echo -e "${YELLOW}Please place a Neo-Geo BIOS file there${NC}"
+fi
+
+echo -e "${GREEN}SD card image prepared in ./sd/${NC}"
+echo -e "├─ cores/console${BOARD}/neogeotang.bin"
+echo -e "└─ games/neogeo/ng_bios.rom"
+echo -e "${GREEN}You can rsync this tree to a FAT-32 USB stick or µSD card${NC}"

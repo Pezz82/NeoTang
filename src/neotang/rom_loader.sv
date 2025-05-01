@@ -122,7 +122,13 @@ module rom_loader (
                         
                         // Set base address based on ROM type
                         case (rom_type)
-                            ROM_BIOS: base_addr <= ADDR_BIOS;
+                            ROM_BIOS: begin
+                                base_addr <= ADDR_BIOS;
+                                if(!rom_start) begin
+                                    // trigger BL616 to push internal BIOS file
+                                    // the BL616 menu will send CMD_LOAD_START + type=0 + addr=0
+                                end
+                            end
                             ROM_P: base_addr <= ADDR_P;
                             ROM_S: base_addr <= ADDR_S;
                             ROM_M: base_addr <= ADDR_M;

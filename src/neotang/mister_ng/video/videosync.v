@@ -37,7 +37,8 @@ module videosync_sync(
 	output R15_QD,
 	output reg FLIP,
 	output nFLIP,
-	output reg P50_CO
+	output reg P50_CO,
+	output HDMI_DE    // Added HDMI data enable output
 );
 	
 	//wire [3:0] S122_REG;
@@ -219,5 +220,8 @@ module videosync_sync(
 	
 	// L40A
 	assign CHBL = ~R15_REG[3];
+
+	// Add HDMI data enable logic
+	assign HDMI_DE = ~(BNK | CHBL);  // Active when not blanking and not in character blanking
 
 endmodule

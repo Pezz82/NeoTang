@@ -1,26 +1,12 @@
 // ------------------------------------------------------------
-// Black-box stub for Gowin rPLL primitive so Yosys will ignore
-// vendor implementation during open-source synthesis.
-// ------------------------------------------------------------
-(* blackbox *)
-module rPLL
-#(
-    parameter FCLKIN = "27",
-    parameter IDIV_SEL = 0,
-    parameter FBCLK_SEL = "internal",
-    parameter O0_DIV_SEL = 6,
-    parameter O0_PHASE_SEL = 0,
-    parameter O1_DIV_SEL = 1,
-    parameter O1_PHASE_SEL = 0,
-    parameter O2_DIV_SEL = 1,
-    parameter O2_PHASE_SEL = 0
-)
-(
-    input  wire clkin,
-    input  wire reset,
-    output wire clkoutp,
-    output wire clkoutd,
-    output wire clkoutd3,
-    output wire lock
+// Black-box stub for Gowin PLL (rPLL) – Yosys will ignore implementation
+(* blackbox *) module PLL (
+    input clkin, 
+    output clkout, 
+    output lock
+    /* + any additional outputs as needed */
 );
+    parameter FCLKIN = "27";   // e.g. 27 MHz input
+    parameter IDIV_SEL = 0, FBDIV_SEL = 0, ODIV_SEL = 0;
+    parameter DVRR_SEL = 0, DUTY_SEL = 0, PHASE_SEL = 0;
 endmodule 

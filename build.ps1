@@ -3,61 +3,41 @@ param(
     [string]$BOARD = "138k"
 )
 
-# Create build directory if it doesn't exist
-New-Item -ItemType Directory -Force -Path build | Out-Null
+# Add OSS-CAD-Suite to PATH first
+$env:PATH = "C:\Tools\oss-cad-suite\bin;$env:PATH"
+
+# Create build directory
+New-Item -ItemType Directory -Force -Path "build" | Out-Null
 
 # Set environment variables
 $env:BOARD = $BOARD
 $env:DEVICE = "GW5AST-${BOARD}C"
 
-# Windows: absolute path to yowasp-yosys.exe
-$YOSYS_EXE = "$env:USERPROFILE\AppData\Roaming\Python\Python313\Scripts\yowasp-yosys.exe"
-
-# Write Yosys script
-@"
-# Yosys synthesis script for NeoGeo core
-set scriptdir ../src/neotang
-"@ | Out-File -FilePath build/neotang.ys -Encoding ASCII
-
-# Generate file list with forward slashes
-Get-ChildItem -Path src/neotang -Recurse -Include *.v,*.sv | ForEach-Object {
-    $posix = $_.FullName.Replace('\', '/').Replace('C:/Users/johnp/Downloads/NeoTang-main/', '')
-    "read_verilog -sv ../$posix" | Out-File -FilePath build/neotang.ys -Append -Encoding ASCII
+# Use native Yosys if available, fall back to yowasp-yosys
+$yosys = "yosys"
+if (-not (Get-Command $yosys -ErrorAction SilentlyContinue)) {
+    $yosys = "$env:USERPROFILE\AppData\Roaming\Python\Python313\Scripts\yowasp-yosys.exe"
 }
 
-# Add synthesis commands
-@"
+# Run Yosys synthesis (single command, no semicolon)
+Write-Host "Running Yosys synthesis..."
+& $yosys -l build/yosys.log -c build/neotang.ys
+if ($LASTEXITCODE) { throw "Yosys synthesis failed" }
 
-# Synthesis commands
-hierarchy -top neotang_top
-proc
-flatten
-opt
-synth_gowin -top neotang_top -json neotang.json
-"@ | Out-File -FilePath build/neotang.ys -Append -Encoding ASCII
+# Run nextpnr
+Write-Host "Running nextpnr..."
+& nextpnr-gowin --json build/neotang.json --device $env:DEVICE --write build/neotang.pack
+if ($LASTEXITCODE) { throw "nextpnr failed" }
 
-# Run Yosys synthesis using the correct path
-& $YOSYS_EXE -l build/yosys.log -c build/neotang.ys
-
-# Check if Yosys succeeded
-if (-not (Test-Path build/neotang.json)) {
-    Write-Error "Error: Yosys synthesis failed"
-    exit 1
-}
-
-# Package the design (using Windows gowin_pack)
-$GOWIN_PACK = "$env:USERPROFILE\AppData\Roaming\Python\Python313\Scripts\gowin_pack.exe"
-if (Test-Path $GOWIN_PACK) {
-    & $GOWIN_PACK -d $env:DEVICE -o build/neotang.pack build/neotang.fs
-} else {
-    Write-Error "Error: gowin_pack not found at $GOWIN_PACK"
-    exit 1
-}
+# Run Gowin pack
+Write-Host "Running Gowin pack..."
+& gowin_pack -d $env:DEVICE -o build/neotang.fs build/neotang.pack
+if ($LASTEXITCODE) { throw "Gowin pack failed" }
 
 # Create output directories
 New-Item -ItemType Directory -Force -Path "sd/cores/console${BOARD}" | Out-Null
 
 # Compress and copy to output directory
-Get-Content build/neotang.pack | Set-Content -Encoding Byte sd/cores/console${BOARD}/neogeotang.bin
+Get-Content build/neotang.fs | Set-Content -Encoding Byte sd/cores/console${BOARD}/neogeotang.bin
 
-Write-Host "Build complete for $BOARD" 
+Write-Host "Build completed successfully!" 

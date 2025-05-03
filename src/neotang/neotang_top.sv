@@ -141,6 +141,10 @@ module neotang_top (
     );
     
     // ROM loader
+    wire [24:0] rom_sdram_addr;
+    wire [7:0] rom_sdram_data;
+    wire rom_sdram_wr;
+    
     rom_loader rom_load (
         .clk(clk_48m),
         .reset(core_reset),
@@ -156,7 +160,6 @@ module neotang_top (
         .rom_start(rom_start),
         .rom_busy(rom_busy),
         .rom_done(rom_done),
-        .rom_loading(rom_loading),
         
         // Interface to SDRAM controller
         .sdram_addr(rom_sdram_addr),

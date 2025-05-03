@@ -70,8 +70,9 @@ check_command() {
 
 # Check for required tools
 echo -e "${BLUE}Checking for required tools...${NC}"
-check_command yosys
-check_command nextpnr-gowin
+check_command python
+check_command yowasp-yosys
+check_command yowasp-nextpnr-gowin
 check_command gw_sh
 check_command gzip
 
@@ -157,7 +158,7 @@ echo "synth_gowin -top neotang_top -json neotang.json" >> neotang.ys
 
 # Run Yosys for synthesis
 echo -e "${BLUE}Running Yosys for synthesis...${NC}"
-yosys -l yosys.log neotang.ys
+python -m yowasp.yosys -l yosys.log neotang.ys
 if [ $? -ne 0 ]; then
     handle_error $? "Yosys synthesis failed" "yosys.log"
 fi
@@ -165,7 +166,7 @@ echo -e "${GREEN}Synthesis completed successfully${NC}"
 
 # Run nextpnr-gowin for place and route
 echo -e "${BLUE}Running nextpnr-gowin for place and route...${NC}"
-if ! nextpnr-gowin --device $DEVICE --json neotang.json --pcf $CONSTRAINTS_DIR/neotang_138k.pcf --write neotang_pnr.json --freq 74.25 > nextpnr.log 2>&1; then
+if ! python -m yowasp.nextpnr.gowin --device $DEVICE --json neotang.json --pcf $CONSTRAINTS_DIR/neotang_138k.pcf --write neotang_pnr.json --freq 74.25 > nextpnr.log 2>&1; then
     echo -e "${YELLOW}nextpnr-gowin failed, falling back to Gowin IDE flow${NC}"
     gowin_sh -f neotang.tcl
 else

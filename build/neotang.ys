@@ -1,4 +1,5 @@
-# Yosys synthesis script for NeoGeo coreread_verilog -sv "..\src\neotang\mister_ng\ip_stubs\gowin_pll.v"
+# Yosys synthesis script for NeoGeo core
+read_verilog -sv "..\src\neotang\mister_ng\ip_stubs\gowin_pll.v"
 read_verilog -sv "..\src\neotang\pll_modules.sv"
 read_verilog -sv "..\src\neotang\pll_hdmi_x5.sv"
 read_verilog -sv "..\src\neotang\pll_instantiation.sv"

@@ -224,7 +224,7 @@ module neotang_top (
         .in_b(osd_out_b),
         .in_hs(osd_out_hs),
         .in_vs(osd_out_vs),
-        .in_de(hdmi_de),
+        .de_in(hdmi_de),
         
         .out_r(hdmi_r),
         .out_g(hdmi_g),

@@ -1,31 +1,19 @@
-#!/bin/bash
-# Build script for NeoGeo core on Tang 138K with enhanced error handling
-# Usage: BOARD=60k ./build.sh or BOARD=138k ./build.sh
-
-# Error handling
+#!/usr/bin/env bash
 set -e
-trap 'echo "Error on line $LINENO"' ERR
 
-# Check if BOARD is set
-if [ -z "$BOARD" ]; then
-    echo "Error: BOARD environment variable not set"
-    echo "Usage: BOARD=60k ./build.sh or BOARD=138k ./build.sh"
-    exit 1
-fi
-
-# Map board to device
+# ────────────────────────────────────────────────
+# Parse BOARD variable: 60k (GW5A-60) or 138k (GW5A-138)
+# Allow:  ./build.sh 60k     OR   BOARD=138k ./build.sh
+# ────────────────────────────────────────────────
+BOARD=${1:-${BOARD:-}}
 case "$BOARD" in
-    "60k")
-        DEVICE="GW5AST-60C"
-        ;;
-    "138k")
-        DEVICE="GW5AST-138C"
-        ;;
-    *)
-        echo "Error: Invalid BOARD value. Must be '60k' or '138k'"
-        exit 1
-        ;;
+  60k|60K|gw5a60*)  BOARD=60k   ; DEVICE=GW5AST-60C  ;;
+  138k|138K|gw5a138*) BOARD=138k ; DEVICE=GW5AST-138C ;;
+  *) echo "Must specify BOARD=60k or BOARD=138k"; exit 1 ;;
 esac
+echo "### Building for Tang Console $BOARD  (device = $DEVICE)"
+
+SECONDS=0          # Used later for build-time print-out
 
 # Color codes for output formatting
 RED='\033[0;31m'

@@ -89,8 +89,43 @@ module sdram_controller_dual (
     reg [3:0] delay_counter = 0;
     
     // Bank status tracking (for bank interleaving)
-    reg [3:0] bank_status [0:3]; // 0=closed, 1=port A, 2=port B
-    reg [12:0] open_rows [0:3];  // Currently open row in each bank
+    reg [1:0] bank_status_array [3:0]; // 0=closed, 1=port A, 2=port B
+    reg [12:0] open_rows_array [3:0];  // Currently open row in each bank
+    
+    // Convert to packed arrays for better Yosys compatibility
+    reg [7:0] bank_status; // 2 bits per bank, 4 banks total
+    reg [51:0] open_rows; // 13 bits per bank, 4 banks total
+    
+    // Helper functions to access bank status
+    function [1:0] get_bank_status;
+        input [1:0] bank;
+        begin
+            get_bank_status = bank_status[bank*2 +: 2];
+        end
+    endfunction
+    
+    function [12:0] get_open_row;
+        input [1:0] bank;
+        begin
+            get_open_row = open_rows[bank*13 +: 13];
+        end
+    endfunction
+    
+    task set_bank_status;
+        input [1:0] bank;
+        input [1:0] status;
+        begin
+            bank_status[bank*2 +: 2] = status;
+        end
+    endtask
+    
+    task set_open_row;
+        input [1:0] bank;
+        input [12:0] row;
+        begin
+            open_rows[bank*13 +: 13] = row;
+        end
+    endtask
     
     // Internal signals
     reg [24:0] active_addr;
@@ -126,8 +161,8 @@ module sdram_controller_dual (
     integer i;
     initial begin
         for (i = 0; i < 4; i = i + 1) begin
-            bank_status[i] = 0;
-            open_rows[i] = 0;
+            bank_status_array[i] = 0;
+            open_rows_array[i] = 0;
         end
     end
     
@@ -152,8 +187,8 @@ module sdram_controller_dual (
             
             // Reset bank status
             for (i = 0; i < 4; i = i + 1) begin
-                bank_status[i] <= 0;
-                open_rows[i] <= 0;
+                bank_status_array[i] <= 0;
+                open_rows_array[i] <= 0;
             end
         end else begin
             // Default values
@@ -222,7 +257,7 @@ module sdram_controller_dual (
                             
                             // Mark all banks as closed
                             for (i = 0; i < 4; i = i + 1) begin
-                                bank_status[i] <= 0;
+                                bank_status_array[i] <= 0;
                             end
                         end else begin
                             // Can refresh immediately
@@ -241,7 +276,7 @@ module sdram_controller_dual (
                         active_col <= rom_addr[9:0];
                         
                         // Check if bank is open with different row
-                        if (bank_status[rom_addr[24:23]] && open_rows[rom_addr[24:23]] != rom_addr[22:10]) begin
+                        if (get_bank_status(rom_addr[24:23]) && get_open_row(rom_addr[24:23]) != rom_addr[22:10]) begin
                             // Need to precharge first
                             cmd <= CMD_PRECHARGE;
                             sdram_a[10] <= 0; // Current bank only
@@ -249,16 +284,16 @@ module sdram_controller_dual (
                             state <= STATE_ACTIVATE_A; // Reuse port A path for ROM
                             next_state <= STATE_ROM_WRITE;
                             delay_counter <= tRP;
-                            bank_status[rom_addr[24:23]] <= 0;
-                        end else if (!bank_status[rom_addr[24:23]]) begin
+                            set_bank_status(rom_addr[24:23], 0);
+                        end else if (get_bank_status(rom_addr[24:23]) == 0) begin
                             // Bank closed, activate row
                             cmd <= CMD_ACTIVE;
                             sdram_a <= rom_addr[22:10]; // Row address
                             sdram_ba <= rom_addr[24:23]; // Bank
                             state <= STATE_ROM_WRITE;
                             delay_counter <= tRCD;
-                            bank_status[rom_addr[24:23]] <= 1; // Mark as used by port A
-                            open_rows[rom_addr[24:23]] <= rom_addr[22:10];
+                            set_bank_status(rom_addr[24:23], 1);
+                            set_open_row(rom_addr[24:23], rom_addr[22:10]);
                         end else begin
                             // Bank already open with correct row
                             state <= STATE_ROM_WRITE;
@@ -274,31 +309,31 @@ module sdram_controller_dual (
                             active_col <= a_addr[9:0];
                             
                             // Check bank status
-                            if (bank_status[a_addr[24:23]] == 2) begin
+                            if (get_bank_status(a_addr[24:23]) == 2) begin
                                 // Bank used by port B, need to precharge
                                 cmd <= CMD_PRECHARGE;
                                 sdram_a[10] <= 0; // Current bank only
                                 sdram_ba <= a_addr[24:23];
                                 state <= STATE_ACTIVATE_A;
                                 delay_counter <= tRP;
-                                bank_status[a_addr[24:23]] <= 0;
-                            end else if (bank_status[a_addr[24:23]] == 1 && open_rows[a_addr[24:23]] != a_addr[22:10]) begin
+                                set_bank_status(a_addr[24:23], 0);
+                            end else if (get_bank_status(a_addr[24:23]) == 1 && get_open_row(a_addr[24:23]) != a_addr[22:10]) begin
                                 // Bank used by port A but different row, precharge
                                 cmd <= CMD_PRECHARGE;
                                 sdram_a[10] <= 0; // Current bank only
                                 sdram_ba <= a_addr[24:23];
                                 state <= STATE_ACTIVATE_A;
                                 delay_counter <= tRP;
-                                bank_status[a_addr[24:23]] <= 0;
-                            end else if (!bank_status[a_addr[24:23]]) begin
+                                set_bank_status(a_addr[24:23], 0);
+                            end else if (get_bank_status(a_addr[24:23]) == 0) begin
                                 // Bank closed, activate row
                                 cmd <= CMD_ACTIVE;
                                 sdram_a <= a_addr[22:10]; // Row address
                                 sdram_ba <= a_addr[24:23]; // Bank
                                 state <= STATE_READ_A;
                                 delay_counter <= tRCD;
-                                bank_status[a_addr[24:23]] <= 1; // Mark as used by port A
-                                open_rows[a_addr[24:23]] <= a_addr[22:10];
+                                set_bank_status(a_addr[24:23], 1);
+                                set_open_row(a_addr[24:23], a_addr[22:10]);
                             end else begin
                                 // Bank already open with correct row for port A
                                 state <= STATE_READ_A;
@@ -312,31 +347,31 @@ module sdram_controller_dual (
                             active_col <= a_addr[9:0];
                             
                             // Check bank status
-                            if (bank_status[a_addr[24:23]] == 2) begin
+                            if (get_bank_status(a_addr[24:23]) == 2) begin
                                 // Bank used by port B, need to precharge
                                 cmd <= CMD_PRECHARGE;
                                 sdram_a[10] <= 0; // Current bank only
                                 sdram_ba <= a_addr[24:23];
                                 state <= STATE_ACTIVATE_A;
                                 delay_counter <= tRP;
-                                bank_status[a_addr[24:23]] <= 0;
-                            end else if (bank_status[a_addr[24:23]] == 1 && open_rows[a_addr[24:23]] != a_addr[22:10]) begin
+                                set_bank_status(a_addr[24:23], 0);
+                            end else if (get_bank_status(a_addr[24:23]) == 1 && get_open_row(a_addr[24:23]) != a_addr[22:10]) begin
                                 // Bank used by port A but different row, precharge
                                 cmd <= CMD_PRECHARGE;
                                 sdram_a[10] <= 0; // Current bank only
                                 sdram_ba <= a_addr[24:23];
                                 state <= STATE_ACTIVATE_A;
                                 delay_counter <= tRP;
-                                bank_status[a_addr[24:23]] <= 0;
-                            end else if (!bank_status[a_addr[24:23]]) begin
+                                set_bank_status(a_addr[24:23], 0);
+                            end else if (get_bank_status(a_addr[24:23]) == 0) begin
                                 // Bank closed, activate row
                                 cmd <= CMD_ACTIVE;
                                 sdram_a <= a_addr[22:10]; // Row address
                                 sdram_ba <= a_addr[24:23]; // Bank
                                 state <= STATE_WRITE_A;
                                 delay_counter <= tRCD;
-                                bank_status[a_addr[24:23]] <= 1; // Mark as used by port A
-                                open_rows[a_addr[24:23]] <= a_addr[22:10];
+                                set_bank_status(a_addr[24:23], 1);
+                                set_open_row(a_addr[24:23], a_addr[22:10]);
                             end else begin
                                 // Bank already open with correct row for port A
                                 state <= STATE_WRITE_A;
@@ -353,31 +388,31 @@ module sdram_controller_dual (
                             active_col <= b_addr[9:0];
                             
                             // Check bank status
-                            if (bank_status[b_addr[24:23]] == 1) begin
+                            if (get_bank_status(b_addr[24:23]) == 1) begin
                                 // Bank used by port A, need to precharge
                                 cmd <= CMD_PRECHARGE;
                                 sdram_a[10] <= 0; // Current bank only
                                 sdram_ba <= b_addr[24:23];
                                 state <= STATE_ACTIVATE_B;
                                 delay_counter <= tRP;
-                                bank_status[b_addr[24:23]] <= 0;
-                            end else if (bank_status[b_addr[24:23]] == 2 && open_rows[b_addr[24:23]] != b_addr[22:10]) begin
+                                set_bank_status(b_addr[24:23], 0);
+                            end else if (get_bank_status(b_addr[24:23]) == 2 && get_open_row(b_addr[24:23]) != b_addr[22:10]) begin
                                 // Bank used by port B but different row, precharge
                                 cmd <= CMD_PRECHARGE;
                                 sdram_a[10] <= 0; // Current bank only
                                 sdram_ba <= b_addr[24:23];
                                 state <= STATE_ACTIVATE_B;
                                 delay_counter <= tRP;
-                                bank_status[b_addr[24:23]] <= 0;
-                            end else if (!bank_status[b_addr[24:23]]) begin
+                                set_bank_status(b_addr[24:23], 0);
+                            end else if (get_bank_status(b_addr[24:23]) == 0) begin
                                 // Bank closed, activate row
                                 cmd <= CMD_ACTIVE;
                                 sdram_a <= b_addr[22:10]; // Row address
                                 sdram_ba <= b_addr[24:23]; // Bank
                                 state <= STATE_READ_B;
                                 delay_counter <= tRCD;
-                                bank_status[b_addr[24:23]] <= 2; // Mark as used by port B
-                                open_rows[b_addr[24:23]] <= b_addr[22:10];
+                                set_bank_status(b_addr[24:23], 2);
+                                set_open_row(b_addr[24:23], b_addr[22:10]);
                             end else begin
                                 // Bank already open with correct row for port B
                                 state <= STATE_READ_B;
@@ -391,31 +426,31 @@ module sdram_controller_dual (
                             active_col <= b_addr[9:0];
                             
                             // Check bank status
-                            if (bank_status[b_addr[24:23]] == 1) begin
+                            if (get_bank_status(b_addr[24:23]) == 1) begin
                                 // Bank used by port A, need to precharge
                                 cmd <= CMD_PRECHARGE;
                                 sdram_a[10] <= 0; // Current bank only
                                 sdram_ba <= b_addr[24:23];
                                 state <= STATE_ACTIVATE_B;
                                 delay_counter <= tRP;
-                                bank_status[b_addr[24:23]] <= 0;
-                            end else if (bank_status[b_addr[24:23]] == 2 && open_rows[b_addr[24:23]] != b_addr[22:10]) begin
+                                set_bank_status(b_addr[24:23], 0);
+                            end else if (get_bank_status(b_addr[24:23]) == 2 && get_open_row(b_addr[24:23]) != b_addr[22:10]) begin
                                 // Bank used by port B but different row, precharge
                                 cmd <= CMD_PRECHARGE;
                                 sdram_a[10] <= 0; // Current bank only
                                 sdram_ba <= b_addr[24:23];
                                 state <= STATE_ACTIVATE_B;
                                 delay_counter <= tRP;
-                                bank_status[b_addr[24:23]] <= 0;
-                            end else if (!bank_status[b_addr[24:23]]) begin
+                                set_bank_status(b_addr[24:23], 0);
+                            end else if (get_bank_status(b_addr[24:23]) == 0) begin
                                 // Bank closed, activate row
                                 cmd <= CMD_ACTIVE;
                                 sdram_a <= b_addr[22:10]; // Row address
                                 sdram_ba <= b_addr[24:23]; // Bank
                                 state <= STATE_WRITE_B;
                                 delay_counter <= tRCD;
-                                bank_status[b_addr[24:23]] <= 2; // Mark as used by port B
-                                open_rows[b_addr[24:23]] <= b_addr[22:10];
+                                set_bank_status(b_addr[24:23], 2);
+                                set_open_row(b_addr[24:23], b_addr[22:10]);
                             end else begin
                                 // Bank already open with correct row for port B
                                 state <= STATE_WRITE_B;
@@ -438,8 +473,8 @@ module sdram_controller_dual (
                         cmd <= CMD_ACTIVE;
                         sdram_a <= active_row;
                         sdram_ba <= active_bank;
-                        bank_status[active_bank] <= 1; // Mark as used by port A
-                        open_rows[active_bank] <= active_row;
+                        set_bank_status(active_bank, 1);
+                        set_open_row(active_bank, active_row);
                         
                         if (next_state != 0) begin
                             state <= next_state;
@@ -502,7 +537,7 @@ module sdram_controller_dual (
                         cmd <= CMD_PRECHARGE;
                         sdram_a[10] <= 0; // Current bank only
                         sdram_ba <= active_bank;
-                        bank_status[active_bank] <= 0; // Mark bank as closed
+                        set_bank_status(active_bank, 0);
                         
                         a_ready <= 1;
                         state <= STATE_IDLE;
@@ -515,8 +550,8 @@ module sdram_controller_dual (
                         cmd <= CMD_ACTIVE;
                         sdram_a <= active_row;
                         sdram_ba <= active_bank;
-                        bank_status[active_bank] <= 2; // Mark as used by port B
-                        open_rows[active_bank] <= active_row;
+                        set_bank_status(active_bank, 2);
+                        set_open_row(active_bank, active_row);
                         
                         if (b_rd) begin
                             state <= STATE_READ_B;
@@ -576,7 +611,7 @@ module sdram_controller_dual (
                         cmd <= CMD_PRECHARGE;
                         sdram_a[10] <= 0; // Current bank only
                         sdram_ba <= active_bank;
-                        bank_status[active_bank] <= 0; // Mark bank as closed
+                        set_bank_status(active_bank, 0);
                         
                         b_ready <= 1;
                         state <= STATE_IDLE;
@@ -609,7 +644,7 @@ module sdram_controller_dual (
                         
                         // Mark all banks as closed
                         for (i = 0; i < 4; i = i + 1) begin
-                            bank_status[i] <= 0;
+                            bank_status_array[i] <= 0;
                         end
                         
                         state <= STATE_IDLE;

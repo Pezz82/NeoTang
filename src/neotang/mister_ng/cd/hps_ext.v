@@ -43,17 +43,16 @@ localparam EXT_CMD_MAX = CD_SET;
 localparam CD_GET = 'h34;
 localparam CD_SET = 'h35;
 
-reg [15:0] io_dout;
+reg [15:0] cmd = 0;
+reg [15:0] io_dout = 0;
 reg        dout_en = 0;
-reg  [9:0] byte_cnt;
+reg  [9:0] byte_cnt = 0;
+reg  [7:0] cd_req = 0;
+reg        old_cd = 0;
+reg  [1:0] get_cmd = 0;
+reg        send_data_type = 0;
 
 always@(posedge clk_sys) begin
-	reg [15:0] cmd;
-	reg  [7:0] cd_req = 0;
-	reg        old_cd = 0;
-	reg  [1:0] get_cmd;
-	reg        send_data_type;
-
 	old_cd <= cd_in[48];
 	if(old_cd ^ cd_in[48]) cd_req <= cd_req + 1'd1; 
 
@@ -64,7 +63,6 @@ always@(posedge clk_sys) begin
 		if(cmd == 'h35) cd_out[48] <= ~cd_out[48]; 
 	end
 	else if(io_strobe) begin
-
 		io_dout <= 0;
 		if(~&byte_cnt) byte_cnt <= byte_cnt + 1'd1;
 

@@ -84,7 +84,7 @@ check_command() {
 echo -e "${BLUE}Checking for required tools...${NC}"
 check_command yosys
 check_command nextpnr-gowin
-check_command gowin_pack
+check_command gw_sh
 check_command gzip
 
 # Create build directory
@@ -186,9 +186,9 @@ fi
 
 # Run Gowin pack to generate bitstream
 echo -e "${BLUE}Running Gowin pack to generate bitstream...${NC}"
-gowin_pack -d $DEVICE -o neotang.bin neotang_pnr.json > gowin_pack.log 2>&1
+gw_sh -d $DEVICE -o neotang.bin neotang_pnr.json > gowin_pack.log 2>&1
 if [ $? -ne 0 ]; then
-    handle_error $? "gowin_pack bitstream generation failed" "gowin_pack.log"
+    handle_error $? "gw_sh bitstream generation failed" "gowin_pack.log"
 fi
 
 # Check if bitstream was generated

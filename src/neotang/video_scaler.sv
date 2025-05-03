@@ -130,7 +130,7 @@ module video_scaler (
                 // Switch buffers at the end of each line
                 if (in_active_area) begin
                     current_write_buffer <= ~current_write_buffer;
-                }
+                end
                 
                 if (neo_v_count == NEO_HEIGHT-1)
                     neo_v_count <= 0;
@@ -228,7 +228,7 @@ module video_scaler (
                     out_r <= 8'h00;
                     out_g <= 8'h00;
                     out_b <= 8'h00;
-                }
+                end
             end else begin
                 // Outside active display area - output black
                 out_r <= 8'h00;

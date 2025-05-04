@@ -8,12 +8,21 @@ FPGA_DIR = platform/$(TARGET)
 CORE_DIR = cores/$(CORE)
 FW_DIR   = $(FPGA_DIR)/firmware-bl616
 
+# Platform-specific settings
+ifeq ($(TARGET),tang138k)
+    DEVICE = GW1NR-9C
+else ifeq ($(TARGET),tang60k)
+    DEVICE = GW1N-9C
+else
+    $(error Unsupported target: $(TARGET))
+endif
+
 .PHONY: all fpga fw flash-fw clean
 
 all: fpga fw           # build everything
 
 fpga:
-	$(MAKE) -C $(FPGA_DIR)
+	$(MAKE) -C $(FPGA_DIR) DEVICE=$(DEVICE)
 	$(MAKE) -C $(CORE_DIR)
 
 fw:

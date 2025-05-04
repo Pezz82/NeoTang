@@ -20,7 +20,9 @@ echo "Running synthesis..."
 gowin_sh -c "set_device -device $DEVICE -package QFN88" \
          -c "read_verilog -sv ip_stubs/gowin_pll.v" \
          -c "read_verilog -sv src/common/pll_27_to_74_96.sv" \
+         -c "read_verilog -sv src/common/watchdog_reset.sv" \
          -c "read_verilog -sv src/common/sdram_dualport.sv" \
+         -c "read_verilog -sv src/common/sdram_cache_line.sv" \
          -c "read_verilog -sv src/common/video_scaler_3x.sv" \
          -c "read_verilog -sv src/common/hdmi_output.sv" \
          -c "read_verilog -sv src/common/iosys_bl616.sv" \

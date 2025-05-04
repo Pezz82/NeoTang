@@ -1,0 +1,6 @@
+[submodule "platform/tang138k/tangcore"]
+	path = platform/tang138k/tangcore
+	url = https://github.com/nand2mario/tangcore
+[submodule "platform/tang138k/firmware-bl616"]
+	path = platform/tang138k/firmware-bl616
+	url = https://github.com/nand2mario/firmware-bl616

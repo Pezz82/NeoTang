@@ -8,6 +8,10 @@ NeoGeo core for the Tang FPGA board, based on the MiSTer NeoGeo core.
 - Vivado 2023.2 or later
 - Bouffalo SDK (for BL616 firmware)
 - USB-C OTG adapter for USB storage
+- Gowin EDA tools or open-source toolchain (Yosys, nextpnr-gowin, Project Apicula)
+- Tang 138K FPGA board
+- NeoGeo BIOS ROM (must be provided by the user)
+- NeoGeo game ROMs in either .neo or Darksoft format
 
 ## Quick Start
 
@@ -27,6 +31,7 @@ NeoGeo core for the Tang FPGA board, based on the MiSTer NeoGeo core.
    ```bash
    make CORE=neogeo TARGET=tang138k
    ```
+   Note: The build script will automatically fall back to Gowin IDE if nextpnr-gowin fails.
 
 4. Prepare your SD card:
    - Copy BIOS files to `/bios/NeoGeo/`:
@@ -69,6 +74,44 @@ See `cores/template/README.md` for how to create new cores.
 - Start + Select: Reset
 - Menu + Select: Save state
 - Menu + A: Load state
+
+## Implemented Fixes
+
+This port includes several important fixes for the Tang 138K board:
+
+1. **HDMI_DE Export**
+   - Fixed missing blanking net by properly separating horizontal and vertical blanking signals
+   - Added proper HDMI_DE signal export
+   - Ensures proper video timing
+
+2. **SDRAM Address Width Fix**
+   - Corrected address mapping from MiSTer core to Tang SDRAM controller
+   - Properly preserves bank, row, and column address components
+
+3. **Video Scaler Porch Fix**
+   - Adjusted sync signal generation with corrected porch timing
+   - Resolved off-by-one issue in horizontal counter reset logic
+   - Ensures proper HDMI timing for 720p output
+
+4. **Clock Tree and PLL Fix**
+   - Added missing PLL lock signals
+   - Corrected module instantiations
+   - Ensures proper clock generation
+
+5. **HDMI Audio Path Fix**
+   - Improved audio signal path documentation
+   - Ensures proper audio sample word formatting
+   - Provides synchronized audio and video output
+
+6. **ROM Loader ACK Fix**
+   - Added CMD_ACK branch in STATE_WRITE state
+   - Ensures proper handling of ACK commands
+   - Prevents communication deadlocks during ROM transfers
+
+7. **Build Script Improvements**
+   - Added error handling and reporting
+   - Implemented fallback to Gowin IDE flow
+   - Added comprehensive test patterns
 
 ## License
 

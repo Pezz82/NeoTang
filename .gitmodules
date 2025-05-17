@@ -1,0 +1,15 @@
+[submodule "platform/tang138k/tangcore"]
+	path = platform/tang138k/tangcore
+	url = https://github.com/nand2mario/tangcore
+[submodule "platform/tang138k/firmware-bl616"]
+	path = platform/tang138k/firmware-bl616
+	url = https://github.com/nand2mario/firmware-bl616
+[submodule "platform/tang60k/tangcore"]
+	path = platform/tang60k/tangcore
+	url = https://github.com/nand2mario/tangcore.git
+[submodule "platform/tang60k/firmware-bl616"]
+	path = platform/tang60k/firmware-bl616
+	url = https://github.com/nand2mario/firmware-bl616.git
+[submodule "cores/neogeo/mister_ng"]
+	path = cores/neogeo/mister_ng
+	url = https://github.com/MiSTer-devel/NeoGeo_MiSTer.git
